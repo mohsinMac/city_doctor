@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
@@ -7,140 +6,159 @@ import 'api_service.dart';
 class AuthService {
   final ApiService _apiService = ApiService();
   
-  // Keys for SharedPreferences
+  // Keys for storing data
   static const String _tokenKey = 'auth_token';
-  static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
 
-  /// Login with email and password
+  // Login user
   Future<User> login(String email, String password) async {
-    print('🚀 AuthService.login() called');
-    print('📧 Email: $email');
-    print('🔑 Password length: ${password.length}');
+    // Call API to login
+    final response = await _apiService.signIn(
+      email: email,
+      password: password,
+    );
+
+    // Get tokens from response
+    final accessToken = response['access'] as String;
+    final refreshToken = response['refresh'] as String;
+
+    // Store tokens
+    await _storeTokens(accessToken, refreshToken);
+    
+    // Create user object
+    final user = User(
+      id: 10,
+      email: email,
+      firstName: email.split('@').first,
+      lastName: '',
+    );
+    
+    // Store user data
+    await _storeUser(user);
+    
+    print('✅ Login successful - User stored: ${user.email}');
+    
+    return user;
+  }
+
+  // Logout user
+  Future<void> logout() async {
+    print('🚪 Logging out user');
+    await _clearStoredData();
+    print('✅ Logout completed - data cleared');
+  }
+
+  // Check if user is logged in
+  Future<bool> isAuthenticated() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    final userJson = prefs.getString(_userKey);
+    
+    final hasToken = token != null && token.isNotEmpty;
+    final hasUser = userJson != null && userJson.isNotEmpty;
+    
+    print('🔐 Auth check - Token: $hasToken, User: $hasUser');
+    
+    // Check if both token and user data exist
+    return hasToken && hasUser;
+  }
+
+  // Get current user from storage
+  Future<User?> getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString(_userKey);
+    
+    print('👤 Getting current user - User JSON: ${userJson != null ? "exists" : "null"}');
+    
+    if (userJson != null) {
+      try {
+        final userData = json.decode(userJson) as Map<String, dynamic>;
+        final user = User.fromJson(userData);
+        print('👤 Current user: ${user.email}');
+        return user;
+      } catch (e) {
+        print('❌ Error parsing user data: $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Get user profile from API
+  Future<User> fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    
+    if (token == null) {
+      throw Exception('No token available');
+    }
+
+    // Get profile from API
+    final user = await _apiService.getUserProfile(token);
+    
+    // Store user data
+    await _storeUser(user);
+    
+    return user;
+  }
+
+  // Change password
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    
+    if (token == null) {
+      throw Exception('No token available');
+    }
+
+    // Call API to change password
+    await _apiService.changePassword(token, currentPassword, newPassword, confirmPassword);
+  }
+
+  // Forgot password
+  Future<void> forgotPassword(String email) async {
+    print('📧 Calling forgot password API for: $email');
     
     try {
-      print('📞 Calling API service...');
-      // Call the real API
-      final response = await _apiService.signIn(
-        email: email,
-        password: password,
-        portal: 'staff', // Static portal value as requested
-      );
-
-      print('📥 API Response received');
-      print('🔍 Response keys: ${response.keys.toList()}');
-
-      // Extract tokens from response
-      final accessToken = response['access'] as String?;
-      final refreshToken = response['refresh'] as String?;
-
-      print('🎫 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
-      print('🔄 Refresh Token: ${refreshToken != null ? 'Present' : 'Missing'}');
-
-      if (accessToken == null) {
-        print('❌ Missing access token in response');
-        throw Exception('Invalid response from server');
-      }
-
-      print('👤 Creating user object from email...');
-      // Create user object from email since API doesn't provide user data
-      final user = User(
-        id: '10', // From the JWT token, user_id is 10
-        email: email,
-        name: _generateNameFromEmail(email),
-        profileImage: null,
-        createdAt: DateTime.now(),
-      );
-
-      print('💾 Storing tokens and user data...');
-      // Store tokens and user data
-      await _storeTokens(accessToken, refreshToken);
-      await _storeUser(user);
-
-      print('✅ Login completed successfully');
-      print('👤 User: ${user.name} (${user.email})');
-      return user;
+      // Call API to send OTP
+      await _apiService.forgotPassword(email);
+      print('✅ Forgot password API call successful');
     } catch (e) {
-      print('❌ Error in AuthService.login(): $e');
-      throw Exception(e.toString().replaceAll('Exception: ', ''));
+      print('❌ Forgot password API call failed: $e');
+      rethrow;
     }
   }
 
-  /// Logout user
-  Future<void> logout() async {
-    try {
-      // Clear stored tokens and user data
-      await _clearStoredData();
-    } catch (e) {
-      // Even if clearing fails, we should still logout
-      print('Error during logout: $e');
-    }
+  // Verify OTP
+  Future<void> verifyOTP(String email, String otp) async {
+    // Call API to verify OTP
+    await _apiService.verifyOTP(email, otp);
   }
 
-  /// Check if user is authenticated (e.g., has valid token)
-  Future<bool> isAuthenticated() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      return token != null && token.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
+  // Reset password
+  Future<void> resetPassword(String email, String otp, String newPassword, String confirmPassword) async {
+    // Call API to reset password
+    await _apiService.resetPassword(email, otp, newPassword, confirmPassword);
   }
 
-  /// Get current user from storage/token
-  Future<User?> getCurrentUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString(_userKey);
-      
-      if (userJson != null) {
-        final userData = json.decode(userJson) as Map<String, dynamic>;
-        return User.fromJson(userData);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Register new user
-  Future<User> register(String email, String password, String name) async {
-    // For now, registration is not implemented in the API
-    throw Exception('Registration is not available');
-  }
-
-  /// Reset password
-  Future<void> resetPassword(String email) async {
-    // For now, password reset is not implemented in the API
-    throw Exception('Password reset is not available');
-  }
-
-  // Helper methods for token and user storage
-  Future<void> _storeTokens(String accessToken, String? refreshToken) async {
+  // Helper methods
+  Future<void> _storeTokens(String accessToken, String refreshToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, accessToken);
-    if (refreshToken != null) {
-      await prefs.setString(_refreshTokenKey, refreshToken);
-    }
+    print('🔑 Token stored successfully');
   }
 
   Future<void> _storeUser(User user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userKey, json.encode(user.toJson()));
+    final userJson = json.encode(user.toJson());
+    await prefs.setString(_userKey, userJson);
+    print('💾 User data stored: ${user.email}');
   }
 
   Future<void> _clearStoredData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
-  }
-
-  String _generateNameFromEmail(String email) {
-    final username = email.split('@').first;
-    return username.split('.').map((part) => 
-      part.isNotEmpty ? part[0].toUpperCase() + part.substring(1) : ''
-    ).join(' ');
+    print('🗑️ Stored data cleared');
   }
 } 

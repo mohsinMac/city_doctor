@@ -1,21 +1,23 @@
+import 'package:city_doctor/models/auth_state.dart';
 import 'package:city_doctor/utils/app_assets.dart';
+import 'package:city_doctor/viewmodels/auth_viewmodel.dart';
+import 'package:city_doctor/widgets/app_button.dart';
+import 'package:city_doctor/widgets/app_snackbar.dart';
+import 'package:city_doctor/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../widgets/widgets.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../models/auth_state.dart';
 import 'home_view.dart';
-import 'forgot_password_view.dart';
+import 'forgot_password_screen.dart';
 
-class LoginView extends ConsumerStatefulWidget {
-  const LoginView({super.key});
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginView> createState() => _LoginViewState();
+  ConsumerState<LoginScreen> createState() => _LoginViewState();
 }
 
-class _LoginViewState extends ConsumerState<LoginView> {
+class _LoginViewState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -50,7 +52,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
         // Navigate to home when authenticated
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeView()),
+          MaterialPageRoute(builder: (context) => const BaseScreen()),
         );
       } else if (next is AuthError) {
         print('❌ Auth state: Error - ${next.message}');
@@ -139,7 +141,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                             Text(
                               'Sign In',
                               style: theme.textTheme.displayMedium?.copyWith(
-                                color: theme.colorScheme.onSurface,fontSize: 20
+                                color: theme.colorScheme.onSurface,fontSize: 20.sp
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -263,7 +265,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
   void _handleForgotPassword() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const ForgotPasswordView(),
+        builder: (context) => const ForgotPasswordScreen(),
       ),
     );
   }

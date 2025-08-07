@@ -1,51 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/navigation_viewmodel.dart';
 import '../models/auth_state.dart';
-import 'login_view.dart';
+import 'login_screen.dart';
 import 'home_tab_view.dart';
 import 'chat_tab_view.dart';
 import 'notifications_tab_view.dart';
 import 'profile_tab_view.dart';
 
-class HomeView extends ConsumerStatefulWidget {
-  const HomeView({super.key});
+class BaseScreen extends ConsumerWidget {
+  const BaseScreen({super.key});
 
   @override
-  ConsumerState<HomeView> createState() => _HomeViewState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch navigation state
+    final currentIndex = ref.watch(navigationViewModelProvider);
+    final navigationViewModel = ref.read(navigationViewModelProvider.notifier);
 
-class _HomeViewState extends ConsumerState<HomeView> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    const HomeTabView(),
-    const ChatTabView(),
-    const NotificationsTabView(),
-    const ProfileTabView(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     // Listen for auth state changes
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next is AuthUnauthenticated) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginView()),
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
     });
 
+    final List<Widget> pages = [
+      const HomeTabView(),
+      const ChatTabView(),
+      const NotificationsTabView(),
+      const ProfileTabView(),
+    ];
+
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: pages[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
+        currentIndex: currentIndex,
         onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+          navigationViewModel.setCurrentIndex(index);
         },
         selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey,

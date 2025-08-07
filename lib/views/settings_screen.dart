@@ -1,12 +1,12 @@
+import 'package:city_doctor/viewmodels/auth_viewmodel.dart';
+import 'package:city_doctor/viewmodels/theme_viewmodel.dart';
+import 'package:city_doctor/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../widgets/widgets.dart';
-import '../viewmodels/theme_viewmodel.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../utils/app_theme.dart';
 
-class SettingsView extends ConsumerWidget {
-  const SettingsView({super.key});
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,10 +123,10 @@ class SettingsView extends ConsumerWidget {
             AppCard(
               child: Column(
                 children: [
-                  AppInfoCard(
+                  const AppInfoCard(
                     title: 'Version',
                     subtitle: '1.0.0',
-                    icon: const Icon(Icons.info),
+                    icon: Icon(Icons.info),
                   ),
                   const Divider(height: 1),
                   AppInfoCard(

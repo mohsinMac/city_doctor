@@ -5,127 +5,186 @@ import '../models/user_model.dart';
 class ApiService {
   static const String baseUrl = 'https://backend.citydoctor.ae/v1';
   
-  // Headers for API requests
+  // Basic headers for all API calls
   static Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
-  /// Sign in API call
+  // Login API
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
-    String portal = 'staff', // Static portal value
   }) async {
-    try {
-      final url = Uri.parse('$baseUrl/signin/');
-      
-      final body = json.encode({
-        'email': email,
-        'password': password,
-        'portal': portal,
-      });
+    final url = Uri.parse('$baseUrl/signin/');
+    
+    final body = json.encode({
+      'email': email,
+      'password': password,
+      'portal': 'staff',
+    });
 
-      print('🔐 API Call - SignIn');
-      print('📧 Email: $email');
-      print('🔑 Portal: $portal');
-      print('🌐 URL: $url');
-      print('📦 Request Body: $body');
+    final response = await http.post(url, headers: _headers, body: body);
 
-      final response = await http.post(
-        url,
-        headers: _headers,
-        body: body,
-      );
-
-      print('📡 Response Status: ${response.statusCode}');
-      print('📄 Response Body: ${response.body}');
-      print('📋 Response Headers: ${response.headers}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print('✅ Login successful');
-        print('🎯 Response Data: $data');
-        return data;
-      } else if (response.statusCode == 401) {
-        print('❌ Unauthorized - Invalid credentials');
-        throw Exception('Invalid email or password');
-      } else if (response.statusCode == 400) {
-        final errorData = json.decode(response.body);
-        String errorMessage = 'Invalid request';
-        
-        // Try to extract error message from different possible formats
-        if (errorData['error'] != null) {
-          if (errorData['error'] is List) {
-            errorMessage = (errorData['error'] as List).first.toString();
-          } else {
-            errorMessage = errorData['error'].toString();
-          }
-        } else if (errorData['message'] != null) {
-          errorMessage = errorData['message'].toString();
-        } else if (errorData['detail'] != null) {
-          errorMessage = errorData['detail'].toString();
-        }
-        
-        print('❌ Bad Request: $errorMessage');
-        throw Exception(errorMessage);
-      } else {
-        print('❌ Server Error: ${response.statusCode}');
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Exception in signIn: $e');
-      if (e is Exception) {
-        rethrow;
-      }
-      throw Exception('Network error: ${e.toString()}');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 401) {
+      throw Exception('Invalid email or password');
+    } else {
+      throw Exception('Login failed');
     }
   }
 
-  /// Get user profile
+  // Get user profile API
   Future<User> getUserProfile(String token) async {
-    try {
-      final url = Uri.parse('$baseUrl/profile/');
-      
-      final headers = Map<String, String>.from(_headers);
-      headers['Authorization'] = 'Bearer $token';
-
-      final response = await http.get(url, headers: headers);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return User.fromJson(data);
-      } else {
-        throw Exception('Failed to get user profile');
-      }
-    } catch (e) {
-      throw Exception('Failed to get user profile: ${e.toString()}');
+    final url = Uri.parse('$baseUrl/user/me/');
+    
+    final headers = Map<String, String>.from(_headers);
+    headers['Authorization'] = 'Bearer $token';
+    
+    final response = await http.get(url, headers: headers);
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return User.fromJson(data);
+    } else {
+      throw Exception('Failed to get profile');
     }
   }
 
-  /// Refresh token
-  Future<String> refreshToken(String refreshToken) async {
-    try {
-      final url = Uri.parse('$baseUrl/refresh/');
-      
-      final body = json.encode({
-        'refresh': refreshToken,
-      });
+  // Change password API
+  Future<void> changePassword(String token, String currentPassword, String newPassword, String confirmPassword) async {
+    final url = Uri.parse('$baseUrl/c/change/password/');
+    
+    print('🌐 Making change password request to: $url');
+    print('📧 Request body: {"current_password": "***", "password": "***", "confirm_password": "***"}');
+    
+    final headers = Map<String, String>.from(_headers);
+    headers['Authorization'] = 'Bearer $token';
+    
+    final body = json.encode({
+      'current_password': currentPassword,
+      'password': newPassword,
+      'confirm_password': confirmPassword,
+    });
 
-      final response = await http.post(
-        url,
-        headers: _headers,
-        body: body,
-      );
+    final response = await http.post(url, headers: headers, body: body);
+    
+    print('📡 Response status: ${response.statusCode}');
+    print('📡 Response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      print('✅ Password change successful');
+      return;
+    } else if (response.statusCode == 400) {
+      print('❌ Bad request error: Invalid current password');
+      throw Exception('Invalid current password');
+    } else {
+      print('❌ Server error: ${response.statusCode}');
+      throw Exception('Failed to change password');
+    }
+  }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['access'] ?? '';
+  // Forgot password API
+  Future<void> forgotPassword(String email) async {
+    final url = Uri.parse('$baseUrl/c/user/request/reset/');
+    
+    print('🌐 Making forgot password request to: $url');
+    print('📧 Request body: {"email": "$email"}');
+    
+    final body = json.encode({
+      'email': email,
+    });
+
+    final response = await http.post(url, headers: _headers, body: body);
+    
+    print('📡 Response status: ${response.statusCode}');
+    print('📡 Response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      print('✅ Forgot password request successful');
+      return;
+    } else if (response.statusCode == 400) {
+      final responseData = json.decode(response.body);
+      print('❌ Bad request error: $responseData');
+      if (responseData['detail'] != null) {
+        throw Exception(responseData['detail']);
       } else {
-        throw Exception('Failed to refresh token');
+        throw Exception('Failed to send OTP');
       }
-    } catch (e) {
-      throw Exception('Failed to refresh token: ${e.toString()}');
+    } else {
+      print('❌ Server error: ${response.statusCode}');
+      throw Exception('Failed to send OTP');
+    }
+  }
+
+  // Verify OTP API
+  Future<void> verifyOTP(String email, String otp) async {
+    final url = Uri.parse('$baseUrl/c/user/verify/otp/');
+    
+    print('🌐 Making OTP verification request to: $url');
+    print('📧 Request body: {"email": "$email", "otp": "$otp"}');
+    
+    final body = json.encode({
+      'email': email,
+      'otp': otp,
+    });
+
+    final response = await http.post(url, headers: _headers, body: body);
+    
+    print('📡 Response status: ${response.statusCode}');
+    print('📡 Response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      print('✅ OTP verification successful');
+      return;
+    } else if (response.statusCode == 400) {
+      final responseData = json.decode(response.body);
+      print('❌ Bad request error: $responseData');
+      if (responseData['detail'] != null) {
+        throw Exception(responseData['detail']);
+      } else {
+        throw Exception('Invalid OTP');
+      }
+    } else {
+      print('❌ Server error: ${response.statusCode}');
+      throw Exception('Failed to verify OTP');
+    }
+  }
+
+  // Reset password API
+  Future<void> resetPassword(String email, String otp, String newPassword, String confirmPassword) async {
+    final url = Uri.parse('$baseUrl/c/user/reset/password/');
+    
+    print('🌐 Making password reset request to: $url');
+    print('📧 Request body: {"email": "$email", "otp": "$otp", "password": "***", "confirm_password": "***"}');
+    
+    final body = json.encode({
+      'email': email,
+      'otp': otp,
+      'password': newPassword,
+      'confirm_password': confirmPassword,
+    });
+
+    final response = await http.post(url, headers: _headers, body: body);
+    
+    print('📡 Response status: ${response.statusCode}');
+    print('📡 Response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      print('✅ Password reset successful');
+      return;
+    } else if (response.statusCode == 400) {
+      final responseData = json.decode(response.body);
+      print('❌ Bad request error: $responseData');
+      if (responseData['detail'] != null) {
+        throw Exception(responseData['detail']);
+      } else {
+        throw Exception('Failed to reset password');
+      }
+    } else {
+      print('❌ Server error: ${response.statusCode}');
+      throw Exception('Failed to reset password');
     }
   }
 } 

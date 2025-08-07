@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'utils/app_theme.dart';
-import 'viewmodels/theme_viewmodel.dart';
-import 'views/splash_view.dart';
+import 'views/splash_screen.dart';
 
 void main() {
   print('🚀 App starting...');
@@ -19,18 +18,16 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentTheme = ref.watch(themeViewModelProvider);
-    
     return ScreenUtilInit(
       designSize: const Size(375, 812), // iPhone X size as base
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-    return MaterialApp(
-      title: 'City Doctor',
+        return MaterialApp(
+          title: 'City Doctor',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.getTheme(currentTheme),
-          home: const SplashView(),
+          theme: AppTheme.lightTheme,
+          home: const SplashScreen(),
         );
       },
     );
